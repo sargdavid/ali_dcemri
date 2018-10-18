@@ -19,6 +19,9 @@
 date()
 
 # Load packages----
+# NOTE: using older verison of oro.dicom (0.3.1)
+# Installed from teh tar file in source folder
+# New verison (0.5.0) is missing dicomSeparate function
 require(oro.dicom)
 require(oro.nifti)
 require(dcemriS4)
@@ -26,6 +29,7 @@ require(dcemriS4)
 # Load data----
 dcmList <- dicomSeparate(path = "data/dicom_combined")
 t1 <- dicomTable(dcmList$hdr)
+t1$`0020-0013-InstanceNumber`
 
 dcmImage <- create4D(dcmList)
 dim(dcmImage)
@@ -53,6 +57,8 @@ fname
 abdo <- dicomInfo(fname[1])
 names(abdo)
 head(abdo$hdr)
+abdo$hdr[abdo$hdr$name == "InstanceNumber", ]
+abdo$hdr$name
 
 # Convert DICOM to Nifti format
 niftiImage <- oro.dicom::dicom2nifti(dcm = dcmList,
@@ -79,42 +85,50 @@ for (i in 1:dim(niftiImage)[4]) {
   graphics.off()
 }
 
-Modeling
+# Modeling
 mask <- array(data = FALSE,
               dim = c(256,
                       256,
                       24,
                       6))
-
-image(niftiImage[110:160, 
-                 140:200,
+image(niftiImage[,,13,1],
+      col = grey(0:64/64))
+image(niftiImage[20:70, 
+                 120:180,
                  13,
                  1],
       col = grey(0:64/64))
 
-mask[110:160,
-     140:200,,] <- TRUE
+mask[20:70,
+     120:180,,] <- TRUE
 sum(mask)/(6*24*256^2)
 
 dim(niftiImage)
-fit.lm <- dcemri.lm(conc = niftiImage,
-                    img.mask = mask)
+fit.lm <- dcemri.lm(conc = niftiImage@.Data,
+                    time = c(0, 10, 30, 60, 120, 300),
+                    img.mask = mask,
+                    multicore = TRUE)
 gc()
 fit.lm
 summary(fit.lm)
 
-tiff(filename = "tmp/overlay_time1.tiff",
-     height = 10,
-     width = 10,
-     units = 'in',
-     res = 300,
-     compression = "lzw+p")
-overlay(niftiImage,
-        ifelse(mask[, , , 1], 
-               fit.lm$ktrans,
-               NA),
-        w = 1)
-graphics.off()
+for (i in 1:dim(niftiImage)[4]) {
+  tiff(filename = paste("tmp/overlay_by_time",
+                        i,
+                        ".tiff",
+                        sep = ""),
+       height = 10,
+       width = 10,
+       units = 'in',
+       res = 300,
+       compression = "lzw+p")
+  overlay(niftiImage,
+          ifelse(mask[, , , i], 
+                 fit.lm$ktrans,
+                 NA),
+          w = i)
+  graphics.off()
+}
 
 gc()
 
@@ -124,11 +138,12 @@ library(reshape2)
 library(rgl)
 dim(dcmImage)
 class(dcmImage)
-M=melt(dcmImage)
+M <- melt(dcmImage)
 head(M)
 
 summary(M$value)
-M <- M[M$value > 300, ]
+M <- M[M$value > 300 &
+         M$Var4 == 1, ]
 M$color <- 1 - M$value/max(M$value)
 
 
@@ -136,4 +151,3 @@ points3d(M$Var1,M$Var2,M$Var3,
          col = grey(M$color),
          alpha = 0.5)
 aspect3d(1, 1, 1)
-         
