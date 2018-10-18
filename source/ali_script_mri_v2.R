@@ -145,9 +145,13 @@ summary(M$value)
 M <- M[M$value > 300 &
          M$Var4 == 1, ]
 M$color <- 1 - M$value/max(M$value)
+# M$color <- M$color + (1 - max(M$color))
+summary(M$color)
 
 
-points3d(M$Var1,M$Var2,M$Var3,
+points3d(x = M$Var1,
+         y = M$Var2,
+         z = M$Var3,
          col = grey(M$color),
          alpha = 0.5)
-aspect3d(1, 1, 1)
+aspect3d(1, 1, 0.5)
