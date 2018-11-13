@@ -20,7 +20,7 @@ date()
 
 # Load packages----
 # NOTE: using older verison of oro.dicom (0.3.1)
-# Installed from teh tar file in source folder
+# Installed from the tar file in source folder
 # New verison (0.5.0) is missing dicomSeparate function
 require(oro.dicom)
 require(oro.nifti)
